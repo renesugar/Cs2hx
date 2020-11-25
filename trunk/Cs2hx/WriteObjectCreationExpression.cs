@@ -19,7 +19,13 @@ namespace Cs2hx
 
 			var model = Program.GetModel(expression);
 			var type = model.GetTypeInfo(expression).Type;
-            var methodSymbol = model.GetSymbolInfo(expression).Symbol.As<IMethodSymbol>();
+            var methodSymbolUntyped = model.GetSymbolInfo(expression).Symbol;
+            if (methodSymbolUntyped == null)
+                throw new Exception("methodSymbolUntyped is null");
+            var methodSymbol = (IMethodSymbol)methodSymbolUntyped;
+
+            if (type.SpecialType == SpecialType.System_DateTime && expression.ArgumentList.Arguments.Count == 1)
+                throw new Exception("You cannot use the DateTime constructor with one argument (ticks).  .net Ticks and Haxe Ticks have different meanings, so this would result in problems. " + Utility.Descriptor(expression));
 
             if (type.SpecialType == SpecialType.System_Object)
             {
@@ -46,23 +52,33 @@ namespace Cs2hx
             {
                 var translateOpt = MethodTranslation.Get(methodSymbol);
 
+                var convertedType = TypeProcessor.ConvertType(expression.Type);
 
-                writer.Write("new ");
-                writer.Write(TypeProcessor.ConvertType(expression.Type));
-                writer.Write("(");
-
-                bool first = true;
-                foreach (var param in TranslateParameters(translateOpt, WriteInvocationExpression.SortArguments(methodSymbol, expression.ArgumentList.Arguments, expression, false), expression))
+                if (convertedType == "String")
                 {
-                    if (first)
-                        first = false;
-                    else
-                        writer.Write(", ");
-
-                    param.Write(writer);
+                    //Normally, writing "new String(" in C# will fall under the above check which calls Cs2Hx.NewString.  However, if a translation changes a type into a string, such as with guids, it falls here.  It's important not to ever write "new String(" in haxe since that makes copies of strings which don't compare properly with ==.  So just embed the string straight.
+                    Core.Write(writer, expression.ArgumentList.Arguments.Single().Expression);
                 }
+                else
+                {
 
-                writer.Write(")");
+                    writer.Write("new ");
+                    writer.Write(convertedType);
+                    writer.Write("(");
+
+                    bool first = true;
+                    foreach (var param in TranslateParameters(translateOpt, WriteInvocationExpression.SortArguments(methodSymbol, expression.ArgumentList.Arguments, expression, false), expression))
+                    {
+                        if (first)
+                            first = false;
+                        else
+                            writer.Write(", ");
+
+                        param.Write(writer);
+                    }
+
+                    writer.Write(")");
+                }
             }
 		}
 

@@ -31,15 +31,15 @@ namespace Cs2hx
 		{
 			var overloadedGroup = method.ContainingType.GetMembers(method.Name).OfType<IMethodSymbol>().ToList();
 
-			if (overloadedGroup.Count == 0)
-				throw new Exception("Symbols not found");
+            if (overloadedGroup.Count == 0)
+                return method.Name; //this can happen for overloaded operator methods
 
 			if (overloadedGroup.Count == 1)
 				return method.Name;
 
 			var defaultOverloadOpt = PickDefault(overloadedGroup);
 			
-			if (method == defaultOverloadOpt || method.ConstructedFrom == defaultOverloadOpt)
+			if (SymbolEqualityComparer.Default.Equals(method, defaultOverloadOpt) || SymbolEqualityComparer.Default.Equals(method.ConstructedFrom, defaultOverloadOpt))
 				return method.Name; //return the name unchanged
 
 			return ExpandedMethodName(method);

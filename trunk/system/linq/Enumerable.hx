@@ -1,5 +1,6 @@
 package system.linq;
 
+import haxe.ds.ObjectMap;
 import system.collections.generic.Dictionary;
 import system.Exception;
 import system.DateTime;
@@ -18,8 +19,8 @@ class Enumerable
 	public static function Range(start:Int, count:Int):Array<Int>
 	{
 		var ret = new Array<Int>();
-		for (i in start...count)
-			ret[i - start] = i;
+		for (i in 0...count)
+			ret[i] = i + start;
 		return ret;
 	}
 
@@ -84,9 +85,9 @@ class Enumerable
 	
 	public static function Union<T>(a:Array<T>, union:Array<T>):Array<T>
 	{
-		var keys:Map<String, Int> = new Map<String, Int>();
+		var keys = new Map<String, Int>();
 		var ret = new Array<T>();
-			
+
 		for (val in a)
 		{
 			ret.push(val);
@@ -103,7 +104,7 @@ class Enumerable
 	public static function Except<T>(a:Array<T>, except:Array<T>):Array<T>
 	{
 		//Convert except to keys
-		var keys:Map<String, Int> = new Map<String, Int>();
+		var keys = new Map<String, Int>();
 		for (e in except)
 			keys.set(Cs2Hx.Hash(e), 1);
 			
@@ -208,7 +209,7 @@ class Enumerable
 	
 	public static function Intersect<T>(a:Array<T>, b:Array<T>):Array<T>
 	{
-		var dict:Map<String, Int> = new Map<String, Int>();
+		var dict = new Map<String, Int>();
 		for (i in a)
 			dict.set(Cs2Hx.Hash(i), 1);
 			
@@ -394,7 +395,7 @@ class Enumerable
 	public static function Distinct<T>(a:Array<T>):Array<T>
 	{
 		var ret = new Array<T>();
-		var hash:Map<String, Int> = new Map<String, Int>();
+		var hash = new Map<String, Int>();
 		
 		for (i in a)
 		{
@@ -457,6 +458,31 @@ class Enumerable
 				ret = i;
 		return ret;
 	}
+	public static function Max_IEnumerableInt32(a:Array<Int>):Int
+	{
+		var ret:Int = First(a);
+		for (i in a)
+			if (i > ret)
+				ret = i;
+		return ret;
+	}
+	public static function Max_IEnumerableDouble(a:Array<Float>):Float
+	{
+		var ret:Float = First(a);
+		for (i in a)
+			if (i > ret)
+				ret = i;
+		return ret;
+	}
+	public static function Min_IEnumerableInt32(a:Array<Int>):Int
+	{
+		var ret:Int = First(a);
+		for (i in a)
+			if (i < ret)
+				ret = i;
+		return ret;
+	}
+
 	public static function Min_Float(a:Array<Float>):Float
 	{
 		var ret = First(a);
@@ -557,7 +583,7 @@ class Enumerable
 		for (e in a)
 		{
 			var m = func(e);
-			if (m.Ticks > max.Ticks)
+			if (DateTime.op_GreaterThan(m, max))
 				max = m;
 		}
 		return max;
@@ -599,12 +625,37 @@ class Enumerable
 	}
 	
 	
-	public static function OrderByDescending<T>(a:Array<T>, selector:T -> Float):Array<T>
+	
+	public static function OrderByDescending_String<T>(a:Array<T>, selector:T -> String):Array<T>
+	{
+		var list:Array<T> = ToArray(a);
+		list.sort(function(a:T, b:T):Int 
+		{ 
+			var f = selector(a);
+			var s = selector(b);
+            if (f == s)
+                return 0;
+            else if (f < s)
+                return 1;
+            else
+                return -1;
+		} );
+		return list;
+	}
+	
+	public static function OrderByDescending_Float<T>(a:Array<T>, selector:T -> Float):Array<T>
 	{
 		var ret:Array<T> = OrderBy_Float(a, selector);
 		ret.reverse();
 		return ret;
 	}
+	public static function OrderByDescending_Int<T>(a:Array<T>, selector:T -> Int):Array<T>
+	{
+		var list:Array<T> = ToArray(a);
+		list.sort(function(f:T, s:T):Int { return selector(s) - selector(f); } );
+		return list;
+	}
+
 	public static function Sum(a:Array<Int>):Int
 	{
 		var ret:Int = 0;
@@ -668,6 +719,10 @@ class Enumerable
 		}
 		
 		return sum / count;
+	}
+	public static inline function Average_IEnumerable_FuncSingle<T>(a:Array<T>, func:T->Float):Float
+	{
+		return Average_IEnumerable_FuncDouble(a, func);
 	}
 	
 	public static function Cast<FROM,TO>(a:Array<FROM>, type:Class<TO>):Array<TO>

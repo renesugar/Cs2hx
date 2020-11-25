@@ -70,7 +70,7 @@
   <Method SourceObject="System.Collections.Generic.List" Match="RemoveAt" ReplaceWith="splice">
     <Argument Location="1" Action="Insert 1" />
   </Method>
-  <Method SourceObject="System.Collections.Generic.List" Match=".ctor">
+  <Method SourceObject="System.Collections.Generic.List" Match=".ctor" ArgumentTypes="int">
     <Argument Location="0" Action="DeleteIfPresent" />
   </Method>
 
@@ -89,6 +89,9 @@
   <Method SourceObject="System.Linq.Enumerable" Match="OrderBy" ReplaceWith="OrderBy_Int">
     <MatchTypeParameter TypeParameterIndex="1" Match="int" />
   </Method>
+  <Method SourceObject="System.Linq.Enumerable" Match="OrderBy" ReplaceWith="OrderBy_Int">
+    <MatchTypeParameter TypeParameterIndex="1" Match="ushort" />
+  </Method>
   <Method SourceObject="System.Linq.Enumerable" Match="OrderBy" ReplaceWith="OrderBy_String">
     <MatchTypeParameter TypeParameterIndex="1" Match="string" />
   </Method>
@@ -99,6 +102,24 @@
     <MatchTypeParameter TypeParameterIndex="1" Match="double" />
   </Method>
   <Method SourceObject="System.Linq.Enumerable" Match="OrderBy" ReplaceWith="OrderBy_Float">
+    <MatchTypeParameter TypeParameterIndex="1" Match="float" />
+  </Method>
+  <Method SourceObject="System.Linq.Enumerable" Match="OrderByDescending" ReplaceWith="OrderByDescending_Int">
+    <MatchTypeParameter TypeParameterIndex="1" Match="int" />
+  </Method>
+  <Method SourceObject="System.Linq.Enumerable" Match="OrderByDescending" ReplaceWith="OrderByDescending_Int">
+    <MatchTypeParameter TypeParameterIndex="1" Match="ushort" />
+  </Method>
+  <Method SourceObject="System.Linq.Enumerable" Match="OrderByDescending" ReplaceWith="OrderByDescending_String">
+    <MatchTypeParameter TypeParameterIndex="1" Match="string" />
+  </Method>
+  <Method SourceObject="System.Linq.Enumerable" Match="OrderByDescending" ReplaceWith="OrderByDescending_Float">
+    <MatchTypeParameter TypeParameterIndex="1" Match="long" />
+  </Method>
+  <Method SourceObject="System.Linq.Enumerable" Match="OrderByDescending" ReplaceWith="OrderByDescending_Float">
+    <MatchTypeParameter TypeParameterIndex="1" Match="double" />
+  </Method>
+  <Method SourceObject="System.Linq.Enumerable" Match="OrderByDescending" ReplaceWith="OrderByDescending_Float">
     <MatchTypeParameter TypeParameterIndex="1" Match="float" />
   </Method>
 

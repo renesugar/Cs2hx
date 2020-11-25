@@ -7,6 +7,15 @@ import system.text.StringBuilder;
 
 class Cs2Hx
 {
+	public static function ParseOrZero(str:String):Int
+	{
+		#if flash
+		return Std.parseInt(str);
+		#else
+		var r = Std.parseInt(str);
+		return r == null ? 0 : r;
+		#end
+	}
 	public static inline function GuidParse(s:String):String
 	{
 		return s;
@@ -246,9 +255,26 @@ class Cs2Hx
 		return !Math.isFinite(f);
 	}
 	
-	public static inline function Hash(o:Dynamic):String
+	private static var _identity:Int = 0;
+	public static function Hash(o:Dynamic):String
 	{
+		if (o == null)
+			return "";
+		if (Std.is(o, String))
+			return o;
+		if (Std.is(o, Int))
+			return Std.string(o);
+		
+		#if flash
 		return Std.string(o);
+		#else
+		//For now, every object gets a unique ID.  TODO: Wire up the GetHashCode function and use it here.
+		if (o.__csid__)
+			return o.__csid__;
+		var newID = Std.string(++_identity);
+		o.__csid__ = newID;
+		return newID;
+		#end
 	}
 	public static inline function MathMin(f:Int, s:Int):Int
 	{
@@ -351,11 +377,31 @@ class Cs2Hx
 	
 	public static function TrimEnd(str:String, chars:Array<Int> = null):String
 	{
+		if (chars == null)
+			return str.rtrim();
+		
 		return throw new NotImplementedException();
+			
 	}
 	public static function TrimStart(str:String, chars:Array<Int> = null):String
 	{
-		return throw new NotImplementedException();
+		if (chars == null)
+			return str.ltrim();
+		var i = 0;
+		while (i < str.length)
+		{
+			var c = str.charCodeAt(i);
+			for (ch in chars)
+				if (c == ch)
+				{
+					i++;
+					continue;
+				}
+			
+			break;
+		}
+		
+		return str.substr(i);
 	}
 	
 	
@@ -411,8 +457,10 @@ class Cs2Hx
 	
 	public static function TryParseInt(s:String, out:CsRef<Int>):Bool
 	{
-		var i:Int = Std.parseInt(s); //the :Int is required, otherwise Std.parseInt can return null
+		var i = Std.parseInt(s);
 		
+		if (i == null)
+			return false;
 		if (i == 0 && s != "0")
 			return false;
 		

@@ -1,4 +1,6 @@
 package system;
+import system.globalization.CultureInfo;
+using StringTools;
 
 class DateTime
 {
@@ -6,7 +8,7 @@ class DateTime
 	public static var MaxValue(get,null):DateTime;
 	public static var MinValue(get,null):DateTime;
 
-	public var Ticks(get, null):Float;
+	//public var Ticks(get, null):Float;
 	public var Year(get, null):Int;
 	public var Month(get, null):Int;
 	public var Day(get, null):Int;
@@ -26,37 +28,37 @@ class DateTime
 		else if (second != -1 && third != -1)
 			date = new Date(Std.int(first), second - 1, third, forth, fifth, sixth);
 		else
-			date = Date.fromTime(first); //load it as ticks, but these ticks aren't the same as C#'s ticks
+			date = Date.fromTime(first); //load it as milliseconds since epoch. Not the same as C#'s ctor but we can't match it since we don't support Ticks
 	}
 	
 	public function Add(span:TimeSpan):DateTime
 	{
-		return new DateTime(date.getTime() + span.Ticks);
+		return new DateTime(date.getTime() + span.TotalMilliseconds);
 	}
 	public function Subtract_TimeSpan(span:TimeSpan):DateTime
 	{
-		return new DateTime(date.getTime() - span.Ticks);
+		return new DateTime(date.getTime() - span.TotalMilliseconds);
 	}
 	
 	public inline function AddDays(days:Float):DateTime
 	{
-		return new DateTime(date.getTime() + TimeSpan.FromDays(days).Ticks);
+		return new DateTime(date.getTime() + TimeSpan.FromDays(days).TotalMilliseconds);
 	}
 	public inline function AddHours(hours:Float):DateTime
 	{
-		return new DateTime(date.getTime() + TimeSpan.FromHours(hours).Ticks);
+		return new DateTime(date.getTime() + TimeSpan.FromHours(hours).TotalMilliseconds);
 	}
 	public inline function AddMinutes(minutes:Float):DateTime
 	{
-		return new DateTime(date.getTime() + TimeSpan.FromMinutes(minutes).Ticks);
+		return new DateTime(date.getTime() + TimeSpan.FromMinutes(minutes).TotalMilliseconds);
 	}
 	public inline function AddSeconds(seconds:Float):DateTime
 	{
-		return new DateTime(date.getTime() + TimeSpan.FromSeconds(seconds).Ticks);
+		return new DateTime(date.getTime() + TimeSpan.FromSeconds(seconds).TotalMilliseconds);
 	}
 	public inline function AddMilliseconds(ms:Float):DateTime
 	{
-		return new DateTime(date.getTime() + TimeSpan.FromMilliseconds(ms).Ticks);
+		return new DateTime(date.getTime() + ms);
 	}
 	
 	public inline function toString(format:String = null):String
@@ -65,12 +67,24 @@ class DateTime
 			return date.getFullYear() + "/" + FormatDatePiece(date.getMonth() + 1) + "/" + FormatDatePiece(date.getDate()) + 
 				" " + date.getHours() + ":" + FormatDatePiece(date.getMinutes()) + ":" + FormatDatePiece(date.getSeconds());
 		else
-			throw new NotImplementedException();
+		{
+			//Convert the most common codes from C# format to strftime format.  This doesn't try to do all of them, just enough that the most common format strings will work.
+			var fmt = format
+				.replace("yyyy", "%Y")
+				.replace("MM", "%m")
+				.replace("dd", "%d")
+				.replace("HH", "%H")
+				.replace("mm", "%M")
+				.replace("ss", "%S")
+				.replace("fff", ""); //%L throws "not implemented yet" on js target. Just leave it off for now.
+			return DateTools.format(date, fmt);
+			
+		}
 	}
 	
 	public inline function ToShortDateString():String
 	{
-		return date.getFullYear() + "/" + (date.getMonth() + 1) + "/" + date.getDay();
+		return (date.getMonth() + 1) + "/" + date.getDate() + "/" + date.getFullYear();
 	}
 	
 	static function FormatDatePiece(n:Float):String
@@ -88,11 +102,24 @@ class DateTime
 		ret.date = Date.fromString(str);
 		return ret;
 	}
-	
-	//TODO: Ticks doesn't give the same value as .net does
+	public static inline function Parse_String_IFormatProvider(str:String, culture:CultureInfo):DateTime
+	{
+		//TODO: Obey the culture
+		return Parse(str);
+	}
+
+	/*TODO: Ticks doesn't give the same value as .net does.  Wouldn't be able to fix this without a proper bigint support since .net's Ticks won't fit in a Float with accuracy
 	public inline function get_Ticks():Float
 	{
 		return date.getTime();
+	}*/
+	
+	public function TotalMilliseconds():Float
+	{
+		var ret = date.getTime();
+		if (Math.isNaN(ret))
+			throw new Exception("DateTime is NaN");
+		return ret;
 	}
 	
 	public inline function get_Year():Int
@@ -148,4 +175,28 @@ class DateTime
 		return new DateTime(3155378975999999999);
 	}
 	
+	public static inline function op_Equality(t1:DateTime, t2:DateTime):Bool
+	{
+		return t1.date.getTime() == t2.date.getTime();
+	}
+	public static inline function op_Inquality(t1:DateTime, t2:DateTime):Bool
+	{
+		return t1.date.getTime() != t2.date.getTime();
+	}
+	public static inline function op_GreaterThan(t1:DateTime, t2:DateTime):Bool
+	{
+		return t1.date.getTime() > t2.date.getTime();
+	}
+	public static inline function op_LessThan(t1:DateTime, t2:DateTime):Bool
+	{
+		return t1.date.getTime() < t2.date.getTime();
+	}
+	public static inline function op_GreaterThanOrEqual(t1:DateTime, t2:DateTime):Bool
+	{
+		return t1.date.getTime() >= t2.date.getTime();
+	}
+	public static inline function op_LessThanOrEqual(t1:DateTime, t2:DateTime):Bool
+	{
+		return t1.date.getTime() <= t2.date.getTime();
+	}
 }

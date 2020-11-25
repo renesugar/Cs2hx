@@ -11,6 +11,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.MSBuild;
+using Microsoft.Build.Locator;
 
 namespace Cs2hx
 {
@@ -21,7 +22,7 @@ namespace Cs2hx
             try
             {
 
-				Console.WriteLine("C# to haXe Converter\nSee http://www.codeplex.com/cs2hx for full info and documentation.\n\n");
+				Console.WriteLine("C# to haXe Converter\nSee https://github.com/FizzerWL/cs2hx for full info and documentation.\n\n");
 
 				if (args.Length == 0 || args.Any(o => o == "-?" || o == "--help" || o == "/?"))
 				{
@@ -93,10 +94,19 @@ Options available:
 				if (pathToSolution == null)
 					throw new Exception("/sln parameter not passed");
 
+                //FixMsbuild();
+
                 var workspace = MSBuildWorkspace.Create();
+                workspace.WorkspaceFailed += (_, e) =>
+                {
+                    //Console.WriteLine("WorkspaceFailed: " + e.Diagnostic.ToString());
+                };
                 var solution = workspace.OpenSolutionAsync(pathToSolution).Result;
 
 				var projectsList = solution.Projects.ToList();
+
+                if (projectsList.Count == 0)
+                    throw new Exception("Solution has no projects");
 
 				if (projects != null)
 					TrimList(projectsList, projects);
@@ -127,7 +137,34 @@ Options available:
             }
         }
 
-		private static void TrimList(List<Project> projectsList, string projectsCsv)
+        /// <summary>
+        /// Workaround from https://github.com/dotnet/roslyn/issues/26029
+        /// </summary>
+        private static void FixMsbuild()
+        {
+            // Locates all of the instances of Visual Studio on the machine with MSBuild.
+            var instances = MSBuildLocator.QueryVisualStudioInstances().ToArray();
+            if (!instances.Any())
+                throw new Exception("No Visual Studio instances found.");
+
+            //Console.WriteLine("Visual Studio intances:");
+
+            //foreach (var instance in instances)
+            //{
+            //    Console.WriteLine($"  - {instance.Name} - {instance.Version}");
+            //    Console.WriteLine($"    {instance.MSBuildPath}");
+            //    Console.WriteLine();
+            //}
+
+            // We register the first instance that we found. This will cause MSBuildWorkspace to use the MSBuild installed in that instance.
+            // Note: This has to be registered *before* creating MSBuildWorkspace. Otherwise, the MEF composition used by  MSBuildWorkspace will fail to compose.
+            var registeredInstance = instances.First();
+            MSBuildLocator.RegisterInstance(registeredInstance);
+
+            //Console.WriteLine($"Registered: {registeredInstance.Name} - {registeredInstance.Version}");
+            //Console.WriteLine();
+        }
+        private static void TrimList(List<Project> projectsList, string projectsCsv)
 		{
 			var split = projectsCsv.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList();
 

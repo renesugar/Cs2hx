@@ -16,15 +16,11 @@ namespace Cs2hx
         {
             //check for invocation of overloaded operator
             var symbolInfo = Program.GetModel(expression).GetSymbolInfo(expression);
-            if (symbolInfo.Symbol != null && symbolInfo.Symbol is IMethodSymbol)
+            var method = symbolInfo.Symbol as IMethodSymbol;
+            if (IsOverloadedOperator(expression, method))
             {
-                var method = (IMethodSymbol)symbolInfo.Symbol;
-                var type = Program.GetModel(expression).GetTypeInfo(expression).Type;
-                if (method.Name.StartsWith("op_") && !type.ContainingNamespace.FullNameWithDot().StartsWith("System."))
-                {
-                    WriteOverloadedOperatorInvocation(writer, expression, method, type);
-                    return;
-                }
+                WriteOverloadedOperatorInvocation(writer, expression, method);
+                return;
             }
 
 
@@ -46,6 +42,36 @@ namespace Cs2hx
 
 
             Go(writer, expression.Left, expression.OperatorToken, expression.Right);
+        }
+
+        private static bool IsOverloadedOperator(BinaryExpressionSyntax expression, IMethodSymbol method)
+        {
+            if (method == null)
+                return false;
+
+            if (!method.Name.StartsWith("op_"))
+                return false;
+
+            if (method.ContainingType.SpecialType == SpecialType.System_DateTime)
+                return true;
+            if (method.ContainingType.Name == "TimeSpan" && method.ContainingNamespace.FullName() == "System")
+                return true;
+
+            //Don't consider overloaded operators from the System namespace, except for exceptions listed above.  Things like string wind up here and we don't need them to.  Eventually we'll likely want to inverse this and just disable string and other specific types we don't want.
+            if (method.ContainingNamespace.FullNameWithDot().StartsWith("System."))
+                return false;
+
+            if (method.ContainingType.TypeKind == TypeKind.Enum)
+                return false; //don't obey overloaded operators on enums.  We don't need them since we treat them as integers
+            if (method.ContainingType.TypeKind == TypeKind.Delegate)
+                return false;
+            
+            //Exclude anything that gets converted to a primitive type
+            var typeTranslation = Translations.TypeTranslation.Get(method.ContainingNamespace.FullNameWithDot() + method.ContainingType.Name);
+            if (typeTranslation != null && (typeTranslation.ReplaceWith == "Int" || typeTranslation.ReplaceWith == "String" || typeTranslation.ReplaceWith == "Float" || typeTranslation.ReplaceWith == "Bool"))
+                return false;
+
+            return true;
         }
 
         public static void Go(HaxeWriter writer, ExpressionSyntax left, SyntaxToken operatorToken, ExpressionSyntax right)
@@ -149,7 +175,7 @@ namespace Cs2hx
                         var type = Program.GetModel(left).GetTypeInfo(e);
                         var otherType = Program.GetModel(left).GetTypeInfo(otherSide);
 						//Check for enums being converted to strings by string concatenation
-						if (operatorToken.Kind() == SyntaxKind.PlusToken && type.Type.TypeKind == TypeKind.Enum)
+						if (operatorToken.Kind() == SyntaxKind.PlusToken && type.Type.TypeKind == TypeKind.Enum && otherType.ConvertedType.SpecialType == SpecialType.System_String)
 						{
 							writer.Write(type.Type.ContainingNamespace.FullNameWithDot().ToLower());
 							writer.Write(WriteType.TypeName(type.Type.As<INamedTypeSymbol>()));
@@ -222,10 +248,10 @@ namespace Cs2hx
 		}
 
 
-        private static void WriteOverloadedOperatorInvocation(HaxeWriter writer, BinaryExpressionSyntax expression, IMethodSymbol method, ITypeSymbol type)
+        private static void WriteOverloadedOperatorInvocation(HaxeWriter writer, BinaryExpressionSyntax expression, IMethodSymbol method)
         {
-            writer.Write(type.ContainingNamespace.FullNameWithDot().ToLower());
-            writer.Write(type.Name);
+            writer.Write(method.ContainingType.ContainingNamespace.FullNameWithDot().ToLower());
+            writer.Write(method.ContainingType.Name);
             writer.Write(".");
             writer.Write(OverloadResolver.MethodName(method));
             writer.Write("(");
